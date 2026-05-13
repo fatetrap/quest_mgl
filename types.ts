@@ -28,11 +28,17 @@ export interface GameState {
   messages: Message[];
   isShaking: boolean;
   isFlashing: boolean;
-  opponentImage?: string; 
+  opponentImage?: string;
   currentScene: string; // New: Background image URL
   currentChallenge?: Challenge;
   availableQuestionIndices: number[]; // New: Tracks unused questions to prevent repeats
 }
+
+export type AnswerFeedback = {
+  selected: string;
+  correct: string;
+  isCorrect: boolean;
+} | null;
 
 export const OPPONENT_NAME = "BATZORIG";
 export const OPPONENT_CLASS = "KHAN'S GUARD";

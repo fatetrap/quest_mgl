@@ -6,6 +6,19 @@ interface ArenaProps {
   messages: Message[];
 }
 
+const speakPhrase = (text: string) => {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'mn-MN';
+    utter.rate = 0.85;
+    window.speechSynthesis.speak(utter);
+  } catch {
+    // Silently ignore unsupported TTS
+  }
+};
+
 export const Arena: React.FC<ArenaProps> = ({ messages }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -20,9 +33,9 @@ export const Arena: React.FC<ArenaProps> = ({ messages }) => {
   }, [messages]);
 
   return (
-    <div 
+    <div
       ref={scrollRef}
-      className="flex-1 w-full overflow-y-auto p-4 md:p-8 space-y-6 relative z-10 pb-[450px] md:pb-[280px] scroll-smooth"
+      className="flex-1 w-full overflow-y-auto p-4 md:p-8 space-y-6 relative z-10 pb-[300px] md:pb-[220px] scroll-smooth"
     >
       {messages.map((msg) => {
         const isUser = msg.sender === Sender.USER;
@@ -89,12 +102,17 @@ export const Arena: React.FC<ArenaProps> = ({ messages }) => {
 
                 {/* Phonetic Guide (Only for Opponent Mongolian Text) */}
                 {msg.phonetic && (
-                    <div className="mt-4 pt-3 border-t border-[#78350f]/50 flex items-center gap-2 text-[#d97706]">
-                        <Volume2 size={16} />
-                        <span className="text-sm font-['Oswald'] tracking-widest opacity-80">
+                    <button
+                        type="button"
+                        onClick={() => speakPhrase(msg.text)}
+                        className="mt-4 pt-3 border-t border-[#78350f]/50 flex items-center gap-2 text-[#d97706] w-full text-left hover:text-[#fbbf24] transition-colors group"
+                        title="Hear pronunciation"
+                    >
+                        <Volume2 size={16} className="group-hover:animate-pulse" />
+                        <span className="text-sm font-['Oswald'] tracking-widest opacity-80 group-hover:opacity-100">
                             SAY: <span className="text-[#fbbf24] font-bold uppercase">[{msg.phonetic}]</span>
                         </span>
-                    </div>
+                    </button>
                 )}
               </div>
             </div>
