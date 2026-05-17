@@ -5,9 +5,10 @@ import { Skull, Flame, Sword } from 'lucide-react';
 
 interface HUDProps {
   gameState: GameState;
+  bestStreak: number;
 }
 
-export const HUD: React.FC<HUDProps> = ({ gameState }) => {
+export const HUD: React.FC<HUDProps> = ({ gameState, bestStreak }) => {
   const { integrity, opponentImage, streak } = gameState;
 
   // Determine health bar color
@@ -38,6 +39,7 @@ export const HUD: React.FC<HUDProps> = ({ gameState }) => {
       <div className="flex-1 w-full px-4 flex flex-col justify-center relative">
         <div className="flex justify-between text-xs text-[#8c7a6b] font-['Cinzel'] mb-1 uppercase font-bold tracking-widest">
            <span>Honor: {streak}</span>
+           {bestStreak > 0 && <span className="text-[#fcd34d]">Best: {bestStreak}</span>}
            <span>Victory: 10</span>
         </div>
         

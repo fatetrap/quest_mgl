@@ -5,7 +5,7 @@ import { Arena } from './components/Arena';
 import { InputConsole } from './components/InputConsole';
 import { GameOverOverlay } from './components/GameOverOverlay';
 import { Onboarding } from './components/Onboarding';
-import { GameState, Sender, Challenge } from './types';
+import { GameState, Sender, Challenge, AnswerFeedback } from './types';
 
 // --- STATIC CONTENT CONFIGURATION ---
 
@@ -171,6 +171,90 @@ const STATIC_CHALLENGES: Challenge[] = [
         phonetic: "Zogs",
         translation: "Stop",
         options: ["Go", "Stop", "Run", "Walk"]
+    },
+    {
+        phrase: "Морь",
+        phonetic: "Mor",
+        translation: "Horse",
+        options: ["Horse", "Dog", "Wolf", "Eagle"]
+    },
+    {
+        phrase: "Чоно",
+        phonetic: "Chono",
+        translation: "Wolf",
+        options: ["Bear", "Wolf", "Fox", "Lion"]
+    },
+    {
+        phrase: "Гэр",
+        phonetic: "Ger",
+        translation: "Home",
+        options: ["Home", "Door", "Road", "City"]
+    },
+    {
+        phrase: "Цай",
+        phonetic: "Tsai",
+        translation: "Tea",
+        options: ["Milk", "Tea", "Wine", "Soup"]
+    },
+    {
+        phrase: "Сүү",
+        phonetic: "Suu",
+        translation: "Milk",
+        options: ["Water", "Milk", "Tea", "Honey"]
+    },
+    {
+        phrase: "Мах",
+        phonetic: "Makh",
+        translation: "Meat",
+        options: ["Bread", "Cheese", "Meat", "Fish"]
+    },
+    {
+        phrase: "Нар",
+        phonetic: "Nar",
+        translation: "Sun",
+        options: ["Moon", "Sun", "Star", "Sky"]
+    },
+    {
+        phrase: "Сар",
+        phonetic: "Sar",
+        translation: "Moon",
+        options: ["Moon", "Sun", "Star", "Cloud"]
+    },
+    {
+        phrase: "Тэнгэр",
+        phonetic: "Tenger",
+        translation: "Sky",
+        options: ["Earth", "Mountain", "Sky", "River"]
+    },
+    {
+        phrase: "Хаан",
+        phonetic: "Khaan",
+        translation: "King",
+        options: ["Soldier", "King", "Slave", "Priest"]
+    },
+    {
+        phrase: "Дайчин",
+        phonetic: "Daichin",
+        translation: "Warrior",
+        options: ["Farmer", "Warrior", "Merchant", "Scholar"]
+    },
+    {
+        phrase: "Сум",
+        phonetic: "Sum",
+        translation: "Arrow",
+        options: ["Sword", "Arrow", "Shield", "Spear"]
+    },
+    {
+        phrase: "Дөрөв",
+        phonetic: "Durov",
+        translation: "Four",
+        options: ["Three", "Four", "Five", "Six"]
+    },
+    {
+        phrase: "Тав",
+        phonetic: "Tav",
+        translation: "Five",
+        options: ["Four", "Five", "Six", "Seven"]
     }
 ];
 
@@ -193,6 +277,8 @@ const GUARD_QUOTES = {
     ]
 };
 
+const BEST_STREAK_KEY = 'quest_mgl_best_streak';
+
 const INITIAL_STATE: GameState = {
   integrity: 100,
   streak: 0,
@@ -213,13 +299,13 @@ const INITIAL_STATE: GameState = {
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
   const [isGeneratingRound, setIsGeneratingRound] = useState(false);
-  
-  useEffect(() => {
-      setGameState(prev => ({
-          ...prev,
-          status: 'ONBOARDING'
-      }));
-  }, []);
+  const [lastFeedback, setLastFeedback] = useState<AnswerFeedback>(null);
+  const [bestStreak, setBestStreak] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const raw = window.localStorage.getItem(BEST_STREAK_KEY);
+    const parsed = raw ? parseInt(raw, 10) : 0;
+    return Number.isFinite(parsed) ? parsed : 0;
+  });
 
   const stateRef = useRef(gameState);
   useEffect(() => { stateRef.current = gameState; }, [gameState]);
@@ -238,8 +324,13 @@ const App: React.FC = () => {
     }));
   };
 
-  const shuffle = (array: string[]) => {
-    return array.sort(() => Math.random() - 0.5);
+  const shuffle = <T,>(array: T[]): T[] => {
+    const copy = [...array];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
   };
 
   const startNewRound = useCallback(() => {
@@ -253,7 +344,7 @@ const App: React.FC = () => {
     setTimeout(() => {
         let nextIndices = [...stateRef.current.availableQuestionIndices];
         const currentChallenge = stateRef.current.currentChallenge;
-        
+
         if (nextIndices.length === 0) {
             nextIndices = Array.from({ length: STATIC_CHALLENGES.length }, (_, i) => i);
             if (currentChallenge) {
@@ -268,9 +359,9 @@ const App: React.FC = () => {
         const randomIndexPtr = Math.floor(Math.random() * nextIndices.length);
         const challengeIndex = nextIndices[randomIndexPtr];
         nextIndices.splice(randomIndexPtr, 1);
-        
+
         const selectedChallenge = STATIC_CHALLENGES[challengeIndex];
-        const shuffledOptions = shuffle([...selectedChallenge.options]);
+        const shuffledOptions = shuffle(selectedChallenge.options);
 
         const challengeWithShuffledOptions = {
             ...selectedChallenge,
@@ -306,21 +397,28 @@ const App: React.FC = () => {
     if (currentCheck.status !== 'ACTIVE' || !currentCheck.currentChallenge) return;
 
     setIsGeneratingRound(true);
+    const correctAnswer = currentCheck.currentChallenge.translation;
+    const isCorrect = selectedOption === correctAnswer;
+
+    setLastFeedback({ selected: selectedOption, correct: correctAnswer, isCorrect });
     addMessage(selectedOption, Sender.USER);
-    
-    const isCorrect = selectedOption === currentCheck.currentChallenge.translation;
-    
+
     let newIntegrity = currentCheck.integrity;
     let newStreak = currentCheck.streak;
-    
+
     if (isCorrect) {
         newStreak += 1;
     } else {
         newStreak = 0;
         newIntegrity -= 20;
     }
-    
+
     newIntegrity = Math.max(0, newIntegrity);
+
+    if (newStreak > bestStreak) {
+        setBestStreak(newStreak);
+        try { window.localStorage.setItem(BEST_STREAK_KEY, String(newStreak)); } catch {}
+    }
 
     let newStatus: GameState['status'] = currentCheck.status;
     if (newIntegrity <= 0) newStatus = 'DEFEAT';
@@ -339,26 +437,32 @@ const App: React.FC = () => {
 
     const quotes = isCorrect ? GUARD_QUOTES.CORRECT : GUARD_QUOTES.INCORRECT;
     const responseText = quotes[Math.floor(Math.random() * quotes.length)];
-    
+
     setTimeout(() => {
         addMessage(responseText, Sender.OPPONENT);
 
+        if (!isCorrect && newStatus !== 'DEFEAT') {
+            addMessage(`THE WORD WAS: ${correctAnswer.toUpperCase()}`, Sender.SYSTEM);
+        }
+
         if (newStatus === 'ACTIVE') {
              setTimeout(() => {
+                 setLastFeedback(null);
                  startNewRound();
-             }, 1000);
+             }, 1200);
         }
-    }, 300); 
+    }, 300);
 
-  }, [triggerDamageEffect, startNewRound]);
+  }, [triggerDamageEffect, startNewRound, bestStreak]);
 
   const handleRestart = () => {
+    setLastFeedback(null);
     setGameState({
         ...INITIAL_STATE,
         status: 'ACTIVE',
         availableQuestionIndices: Array.from({ length: STATIC_CHALLENGES.length }, (_, i) => i)
     });
-    
+
     setTimeout(() => {
         addMessage("THE SPIRITS AWAKEN AGAIN.", Sender.SYSTEM);
         startNewRound();
@@ -372,6 +476,21 @@ const App: React.FC = () => {
           startNewRound();
       }, 500);
   };
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (gameState.status !== 'ACTIVE' || isGeneratingRound) return;
+      const options = gameState.currentChallenge?.options;
+      if (!options || options.length === 0) return;
+      const idx = parseInt(e.key, 10);
+      if (Number.isInteger(idx) && idx >= 1 && idx <= options.length) {
+        e.preventDefault();
+        handleAnswer(options[idx - 1]);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [gameState.status, gameState.currentChallenge, isGeneratingRound, handleAnswer]);
 
   return (
     <div className={`relative w-full h-screen bg-[#1a1a1a] flex flex-col overflow-hidden transition-all duration-1000 ease-in-out ${gameState.isShaking ? 'animate-shake' : ''}`}>
@@ -390,14 +509,15 @@ const App: React.FC = () => {
       {/* Components */}
       {gameState.status === 'ONBOARDING' && <Onboarding onComplete={handleOnboardingComplete} />}
 
-      <HUD gameState={gameState} />
-      
+      <HUD gameState={gameState} bestStreak={bestStreak} />
+
       <main className="flex-1 flex flex-col relative w-full max-w-5xl mx-auto z-10 min-h-0">
         <Arena messages={gameState.messages} />
-        <InputConsole 
-            onSendMessage={handleAnswer} 
-            disabled={gameState.status !== 'ACTIVE' || isGeneratingRound} 
+        <InputConsole
+            onSendMessage={handleAnswer}
+            disabled={gameState.status !== 'ACTIVE' || isGeneratingRound}
             options={gameState.currentChallenge?.options || []}
+            feedback={lastFeedback}
         />
       </main>
 
