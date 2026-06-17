@@ -267,6 +267,156 @@ const STATIC_CHALLENGES: Challenge[] = [
         phonetic: "Tav",
         translation: "Five",
         options: ["Four", "Five", "Six", "Seven"]
+    },
+    {
+        phrase: "Зургаа",
+        phonetic: "Zurgaa",
+        translation: "Six",
+        options: ["Six", "Seven", "Eight", "Nine"]
+    },
+    {
+        phrase: "Долоо",
+        phonetic: "Doloo",
+        translation: "Seven",
+        options: ["Six", "Seven", "Eight", "Ten"]
+    },
+    {
+        phrase: "Найм",
+        phonetic: "Naim",
+        translation: "Eight",
+        options: ["Seven", "Eight", "Nine", "Ten"]
+    },
+    {
+        phrase: "Ес",
+        phonetic: "Yos",
+        translation: "Nine",
+        options: ["Seven", "Eight", "Nine", "Ten"]
+    },
+    {
+        phrase: "Арав",
+        phonetic: "Arav",
+        translation: "Ten",
+        options: ["Six", "Eight", "Nine", "Ten"]
+    },
+    {
+        phrase: "Улаан",
+        phonetic: "Ulaan",
+        translation: "Red",
+        options: ["Red", "White", "Black", "Blue"]
+    },
+    {
+        phrase: "Цагаан",
+        phonetic: "Tsagaan",
+        translation: "White",
+        options: ["Red", "White", "Black", "Yellow"]
+    },
+    {
+        phrase: "Хар",
+        phonetic: "Khar",
+        translation: "Black",
+        options: ["White", "Black", "Blue", "Green"]
+    },
+    {
+        phrase: "Хөх",
+        phonetic: "Khokh",
+        translation: "Blue",
+        options: ["Red", "Blue", "Yellow", "Green"]
+    },
+    {
+        phrase: "Шар",
+        phonetic: "Shar",
+        translation: "Yellow",
+        options: ["White", "Yellow", "Green", "Black"]
+    },
+    {
+        phrase: "Ногоон",
+        phonetic: "Nogoon",
+        translation: "Green",
+        options: ["Red", "Blue", "Yellow", "Green"]
+    },
+    {
+        phrase: "Нохой",
+        phonetic: "Nokhoi",
+        translation: "Dog",
+        options: ["Dog", "Wolf", "Horse", "Sheep"]
+    },
+    {
+        phrase: "Хонь",
+        phonetic: "Khoni",
+        translation: "Sheep",
+        options: ["Sheep", "Cow", "Goat", "Horse"]
+    },
+    {
+        phrase: "Гал",
+        phonetic: "Gal",
+        translation: "Fire",
+        options: ["Fire", "Water", "Earth", "Air"]
+    },
+    {
+        phrase: "Цас",
+        phonetic: "Tsas",
+        translation: "Snow",
+        options: ["Rain", "Snow", "Wind", "Cloud"]
+    },
+    {
+        phrase: "Салхи",
+        phonetic: "Salkhi",
+        translation: "Wind",
+        options: ["Wind", "Snow", "Rain", "Fire"]
+    },
+    {
+        phrase: "Уул",
+        phonetic: "Uul",
+        translation: "Mountain",
+        options: ["River", "Mountain", "Sky", "Sea"]
+    },
+    {
+        phrase: "Ном",
+        phonetic: "Nom",
+        translation: "Book",
+        options: ["Book", "Knife", "Cup", "Rope"]
+    },
+    {
+        phrase: "Талх",
+        phonetic: "Talkh",
+        translation: "Bread",
+        options: ["Bread", "Meat", "Cheese", "Rice"]
+    },
+    {
+        phrase: "Давс",
+        phonetic: "Davs",
+        translation: "Salt",
+        options: ["Salt", "Sugar", "Pepper", "Spice"]
+    },
+    {
+        phrase: "Том",
+        phonetic: "Tom",
+        translation: "Big",
+        options: ["Big", "Small", "Old", "New"]
+    },
+    {
+        phrase: "Жижиг",
+        phonetic: "Jijig",
+        translation: "Small",
+        options: ["Big", "Small", "Long", "Round"]
+    },
+    {
+        phrase: "Халуун",
+        phonetic: "Khaluun",
+        translation: "Hot",
+        options: ["Hot", "Cold", "Sweet", "Sour"]
+    },
+    {
+        phrase: "Хүйтэн",
+        phonetic: "Khuiten",
+        translation: "Cold",
+        options: ["Hot", "Cold", "Dark", "Light"]
+    },
+    {
+        phrase: "Сайхан",
+        phonetic: "Saikhan",
+        translation: "Beautiful",
+        options: ["Beautiful", "Ugly", "Angry", "Tired"]
     }
 ];
 

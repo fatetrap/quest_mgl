@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Challenge } from '../types';
 import { ProgressMap, getWord, MAX_BOX } from '../srs';
+import { speak } from '../audio';
 import { X, Volume2, Star, Lock } from 'lucide-react';
 
 interface GlossaryProps {
@@ -8,19 +9,6 @@ interface GlossaryProps {
   progress: ProgressMap;
   onClose: () => void;
 }
-
-const speakPhrase = (text: string) => {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  try {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'mn-MN';
-    utter.rate = 0.85;
-    window.speechSynthesis.speak(utter);
-  } catch {
-    // Ignore unsupported TTS
-  }
-};
 
 // The "War Journal": a per-word progress ledger so the learner can see exactly
 // which words are mastered, which need work, and how accurate they've been.
@@ -92,7 +80,7 @@ export const Glossary: React.FC<GlossaryProps> = ({ challenges, progress, onClos
                     <span className="font-['Oswald'] text-xl text-[#fbbf24] truncate">{challenge.phrase}</span>
                     <button
                       type="button"
-                      onClick={() => speakPhrase(challenge.phrase)}
+                      onClick={() => speak(challenge.phrase, challenge.phonetic)}
                       className="text-[#d97706] hover:text-[#fbbf24] shrink-0"
                       title="Hear pronunciation"
                     >

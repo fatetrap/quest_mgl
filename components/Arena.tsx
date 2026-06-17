@@ -1,23 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { Message, Sender } from '../types';
+import { speak } from '../audio';
 import { User, Shield, Volume2 } from 'lucide-react';
 
 interface ArenaProps {
   messages: Message[];
 }
-
-const speakPhrase = (text: string) => {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  try {
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'mn-MN';
-    utter.rate = 0.85;
-    window.speechSynthesis.speak(utter);
-  } catch {
-    // Silently ignore unsupported TTS
-  }
-};
 
 export const Arena: React.FC<ArenaProps> = ({ messages }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -104,7 +92,7 @@ export const Arena: React.FC<ArenaProps> = ({ messages }) => {
                 {msg.phonetic && (
                     <button
                         type="button"
-                        onClick={() => speakPhrase(msg.text)}
+                        onClick={() => speak(msg.text, msg.phonetic)}
                         className="mt-4 pt-3 border-t border-[#78350f]/50 flex items-center gap-2 text-[#d97706] w-full text-left hover:text-[#fbbf24] transition-colors group"
                         title="Hear pronunciation"
                     >
