@@ -21,6 +21,13 @@ export interface Challenge {
   options: string[]; // New: Multiple choice options
 }
 
+// How a word is tested in a given round. Difficulty climbs the test-format
+// hierarchy as the learner masters the word (meaning recognition -> recall):
+//  - CHOICE_HINTED: multiple choice WITH a romanized pronunciation hint (easiest)
+//  - CHOICE:        multiple choice WITHOUT the hint
+//  - TYPE:          free recall — the learner types the translation (hardest)
+export type ReviewMode = 'CHOICE_HINTED' | 'CHOICE' | 'TYPE';
+
 export interface GameState {
   integrity: number; // 0-100 (Health/Spirit)
   streak: number; // Current consecutive wins
@@ -31,7 +38,8 @@ export interface GameState {
   opponentImage?: string;
   currentScene: string; // New: Background image URL
   currentChallenge?: Challenge;
-  availableQuestionIndices: number[]; // New: Tracks unused questions to prevent repeats
+  currentMode: ReviewMode; // How the current challenge is being tested
+  roundCount: number; // Number of challenges issued this session (drives spacing)
 }
 
 export type AnswerFeedback = {

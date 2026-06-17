@@ -5,7 +5,19 @@ import { Arena } from './components/Arena';
 import { InputConsole } from './components/InputConsole';
 import { GameOverOverlay } from './components/GameOverOverlay';
 import { Onboarding } from './components/Onboarding';
+import { Glossary } from './components/Glossary';
 import { GameState, Sender, Challenge, AnswerFeedback } from './types';
+import {
+  ProgressMap,
+  loadProgress,
+  saveProgress,
+  recordResult,
+  selectChallenge,
+  getWord,
+  modeForBox,
+  isRecallCorrect,
+  masteryStats,
+} from './srs';
 
 // --- STATIC CONTENT CONFIGURATION ---
 
@@ -293,13 +305,15 @@ const INITIAL_STATE: GameState = {
   isFlashing: false,
   opponentImage: STATIC_OPPONENT_IMAGE,
   currentScene: SCENES[0],
-  availableQuestionIndices: Array.from({ length: STATIC_CHALLENGES.length }, (_, i) => i)
+  currentMode: 'CHOICE_HINTED',
+  roundCount: 0
 };
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
   const [isGeneratingRound, setIsGeneratingRound] = useState(false);
   const [lastFeedback, setLastFeedback] = useState<AnswerFeedback>(null);
+  const [showGlossary, setShowGlossary] = useState(false);
   const [bestStreak, setBestStreak] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     const raw = window.localStorage.getItem(BEST_STREAK_KEY);
@@ -307,8 +321,15 @@ const App: React.FC = () => {
     return Number.isFinite(parsed) ? parsed : 0;
   });
 
+  // Spaced-repetition progress, persisted across sessions.
+  const [progress, setProgress] = useState<ProgressMap>(() => loadProgress());
+  const progressRef = useRef(progress);
+  useEffect(() => { progressRef.current = progress; }, [progress]);
+
   const stateRef = useRef(gameState);
   useEffect(() => { stateRef.current = gameState; }, [gameState]);
+
+  const stats = masteryStats(STATIC_CHALLENGES, progress);
 
   const addMessage = (text: string, sender: Sender, isMongolian = false, phonetic?: string) => {
     setGameState(prev => ({
@@ -335,53 +356,45 @@ const App: React.FC = () => {
 
   const startNewRound = useCallback(() => {
     if (stateRef.current.status !== 'ACTIVE') return;
-    
+
     setIsGeneratingRound(true);
 
     const randomScene = SCENES[Math.floor(Math.random() * SCENES.length)];
     setGameState(prev => ({ ...prev, currentScene: randomScene }));
 
     setTimeout(() => {
-        let nextIndices = [...stateRef.current.availableQuestionIndices];
-        const currentChallenge = stateRef.current.currentChallenge;
+        const round = stateRef.current.roundCount + 1;
+        const avoidPhrase = stateRef.current.currentChallenge?.phrase;
 
-        if (nextIndices.length === 0) {
-            nextIndices = Array.from({ length: STATIC_CHALLENGES.length }, (_, i) => i);
-            if (currentChallenge) {
-                const currentPhrase = currentChallenge.phrase;
-                const currentIndexInStatic = STATIC_CHALLENGES.findIndex(c => c.phrase === currentPhrase);
-                if (currentIndexInStatic !== -1) {
-                    nextIndices = nextIndices.filter(i => i !== currentIndexInStatic);
-                }
-            }
-        }
+        // Spaced-repetition selection: weak and unseen words surface most often.
+        const selected = selectChallenge(STATIC_CHALLENGES, progressRef.current, round, avoidPhrase);
+        const box = getWord(progressRef.current, selected.phrase).box;
+        const mode = modeForBox(box);
 
-        const randomIndexPtr = Math.floor(Math.random() * nextIndices.length);
-        const challengeIndex = nextIndices[randomIndexPtr];
-        nextIndices.splice(randomIndexPtr, 1);
-
-        const selectedChallenge = STATIC_CHALLENGES[challengeIndex];
-        const shuffledOptions = shuffle(selectedChallenge.options);
-
-        const challengeWithShuffledOptions = {
-            ...selectedChallenge,
-            options: shuffledOptions
+        const challengeForRound: Challenge = {
+            ...selected,
+            options: shuffle(selected.options),
         };
-        
-        setGameState(prev => ({ 
-            ...prev, 
-            availableQuestionIndices: nextIndices,
-            currentChallenge: challengeWithShuffledOptions,
+
+        // The phonetic crutch is only offered at the easiest tier; removing it as
+        // mastery grows forces progressively harder retrieval.
+        const showHint = mode === 'CHOICE_HINTED';
+
+        setGameState(prev => ({
+            ...prev,
+            roundCount: round,
+            currentMode: mode,
+            currentChallenge: challengeForRound,
             messages: [...prev.messages, {
                 id: Date.now().toString() + Math.random(),
                 sender: Sender.OPPONENT,
-                text: selectedChallenge.phrase,
+                text: selected.phrase,
                 timestamp: Date.now(),
                 isMongolian: true,
-                phonetic: selectedChallenge.phonetic
+                phonetic: showHint ? selected.phonetic : undefined
             }]
         }));
-        
+
         setIsGeneratingRound(false);
     }, 600);
   }, []);
@@ -392,16 +405,30 @@ const App: React.FC = () => {
     setTimeout(() => setGameState(prev => ({ ...prev, isShaking: false })), 400);
   }, []);
 
-  const handleAnswer = useCallback((selectedOption: string) => {
+  const handleAnswer = useCallback((rawAnswer: string) => {
     const currentCheck = stateRef.current;
-    if (currentCheck.status !== 'ACTIVE' || !currentCheck.currentChallenge) return;
+    const challenge = currentCheck.currentChallenge;
+    if (currentCheck.status !== 'ACTIVE' || !challenge) return;
+
+    const answer = rawAnswer.trim();
+    if (currentCheck.currentMode === 'TYPE' && answer.length === 0) return; // ignore empty submits
 
     setIsGeneratingRound(true);
-    const correctAnswer = currentCheck.currentChallenge.translation;
-    const isCorrect = selectedOption === correctAnswer;
+    const correctAnswer = challenge.translation;
 
-    setLastFeedback({ selected: selectedOption, correct: correctAnswer, isCorrect });
-    addMessage(selectedOption, Sender.USER);
+    // Free-recall (TYPE) tolerates case/typos/articles; multiple choice is exact.
+    const isCorrect = currentCheck.currentMode === 'TYPE'
+        ? isRecallCorrect(answer, correctAnswer)
+        : answer === correctAnswer;
+
+    setLastFeedback({ selected: answer, correct: correctAnswer, isCorrect });
+    addMessage(answer, Sender.USER);
+
+    // Update spaced-repetition memory for this word and persist it.
+    const updatedProgress = recordResult(progressRef.current, challenge.phrase, isCorrect, currentCheck.roundCount);
+    progressRef.current = updatedProgress;
+    setProgress(updatedProgress);
+    saveProgress(updatedProgress);
 
     let newIntegrity = currentCheck.integrity;
     let newStreak = currentCheck.streak;
@@ -441,8 +468,9 @@ const App: React.FC = () => {
     setTimeout(() => {
         addMessage(responseText, Sender.OPPONENT);
 
+        // On a miss, reveal the answer AND the pronunciation (corrective feedback).
         if (!isCorrect && newStatus !== 'DEFEAT') {
-            addMessage(`THE WORD WAS: ${correctAnswer.toUpperCase()}`, Sender.SYSTEM);
+            addMessage(`THE WORD WAS: ${correctAnswer.toUpperCase()} — SAY [${challenge.phonetic}]`, Sender.SYSTEM);
         }
 
         if (newStatus === 'ACTIVE') {
@@ -457,10 +485,12 @@ const App: React.FC = () => {
 
   const handleRestart = () => {
     setLastFeedback(null);
+    // Spaced-repetition progress intentionally persists across defeats — the
+    // learner keeps the words they've earned.
     setGameState({
         ...INITIAL_STATE,
         status: 'ACTIVE',
-        availableQuestionIndices: Array.from({ length: STATIC_CHALLENGES.length }, (_, i) => i)
+        roundCount: 0
     });
 
     setTimeout(() => {
@@ -480,6 +510,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (gameState.status !== 'ACTIVE' || isGeneratingRound) return;
+      // Number-key shortcuts only apply to multiple-choice rounds, not typed recall.
+      if (gameState.currentMode === 'TYPE') return;
       const options = gameState.currentChallenge?.options;
       if (!options || options.length === 0) return;
       const idx = parseInt(e.key, 10);
@@ -490,7 +522,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [gameState.status, gameState.currentChallenge, isGeneratingRound, handleAnswer]);
+  }, [gameState.status, gameState.currentChallenge, gameState.currentMode, isGeneratingRound, handleAnswer]);
 
   return (
     <div className={`relative w-full h-screen bg-[#1a1a1a] flex flex-col overflow-hidden transition-all duration-1000 ease-in-out ${gameState.isShaking ? 'animate-shake' : ''}`}>
@@ -509,7 +541,13 @@ const App: React.FC = () => {
       {/* Components */}
       {gameState.status === 'ONBOARDING' && <Onboarding onComplete={handleOnboardingComplete} />}
 
-      <HUD gameState={gameState} bestStreak={bestStreak} />
+      <HUD
+        gameState={gameState}
+        bestStreak={bestStreak}
+        mastered={stats.mastered}
+        totalWords={stats.total}
+        onOpenGlossary={() => setShowGlossary(true)}
+      />
 
       <main className="flex-1 flex flex-col relative w-full max-w-5xl mx-auto z-10 min-h-0">
         <Arena messages={gameState.messages} />
@@ -517,9 +555,18 @@ const App: React.FC = () => {
             onSendMessage={handleAnswer}
             disabled={gameState.status !== 'ACTIVE' || isGeneratingRound}
             options={gameState.currentChallenge?.options || []}
+            mode={gameState.currentMode}
             feedback={lastFeedback}
         />
       </main>
+
+      {showGlossary && (
+        <Glossary
+            challenges={STATIC_CHALLENGES}
+            progress={progress}
+            onClose={() => setShowGlossary(false)}
+        />
+      )}
 
       <GameOverOverlay status={gameState.status} onRestart={handleRestart} />
     </div>

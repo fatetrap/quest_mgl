@@ -1,14 +1,17 @@
 
 import React from 'react';
 import { GameState, OPPONENT_NAME, OPPONENT_CLASS } from '../types';
-import { Skull, Flame, Sword } from 'lucide-react';
+import { Skull, Flame, Sword, ScrollText } from 'lucide-react';
 
 interface HUDProps {
   gameState: GameState;
   bestStreak: number;
+  mastered: number;
+  totalWords: number;
+  onOpenGlossary: () => void;
 }
 
-export const HUD: React.FC<HUDProps> = ({ gameState, bestStreak }) => {
+export const HUD: React.FC<HUDProps> = ({ gameState, bestStreak, mastered, totalWords, onOpenGlossary }) => {
   const { integrity, opponentImage, streak } = gameState;
 
   // Determine health bar color
@@ -65,12 +68,21 @@ export const HUD: React.FC<HUDProps> = ({ gameState, bestStreak }) => {
             </div>
         </div>
         
-        <div className="flex justify-center mt-1">
-            <div className="flex items-center gap-2 text-[#b45309] text-xs font-['Cinzel'] uppercase tracking-widest">
+        <div className="flex justify-center items-center gap-4 mt-1">
+            <div className="hidden sm:flex items-center gap-2 text-[#b45309] text-xs font-['Cinzel'] uppercase tracking-widest">
                 <Sword size={12} />
                 <span>Prove Your Worth</span>
                 <Sword size={12} />
             </div>
+            <button
+                type="button"
+                onClick={onOpenGlossary}
+                className="flex items-center gap-2 text-xs font-['Cinzel'] uppercase tracking-widest text-[#8c7a6b] hover:text-[#fcd34d] transition-colors border border-[#3d2f25] hover:border-[#b45309] px-3 py-1"
+                title="Open your War Journal"
+            >
+                <ScrollText size={12} />
+                <span>Mastered {mastered}/{totalWords}</span>
+            </button>
         </div>
       </div>
 

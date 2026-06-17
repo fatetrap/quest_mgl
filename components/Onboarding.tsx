@@ -26,15 +26,15 @@ const SLIDES = [
   {
     id: 3,
     title: "THE TEST",
-    desc: "He challenges you with phrases. Translate correctly to earn his favor. Hesitate, and you will be cast out.",
+    desc: "He challenges you with words. Those you struggle with return often; those you master grow harder — first the pronunciation guide vanishes, then you must recall the meaning from memory alone.",
     // Yurt Interior
-    image: "https://images.unsplash.com/photo-1548682880-9907f9c735d4?q=80&w=1000&auto=format&fit=crop&sat=-50", 
+    image: "https://images.unsplash.com/photo-1548682880-9907f9c735d4?q=80&w=1000&auto=format&fit=crop&sat=-50",
     icon: <Swords className="w-12 h-12 text-[#b45309] mb-4" />
   },
   {
     id: 4,
     title: "HONOR",
-    desc: "Achieve 10 CONSECUTIVE correct answers to prove your worthiness to enter the Camp of the Khan.",
+    desc: "Achieve 10 CONSECUTIVE correct answers to prove your worth. Your mastery is remembered between battles — consult your War Journal to see every word you have learned.",
     // Horses in Mist
     image: "https://images.unsplash.com/photo-1518014568023-fa00619c286d?q=80&w=1000&auto=format&fit=crop&sat=-50",
     icon: <Shield className="w-12 h-12 text-[#b45309] mb-4" />
