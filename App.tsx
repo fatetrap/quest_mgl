@@ -17,7 +17,17 @@ import {
   modeForBox,
   isRecallCorrect,
   masteryStats,
+  MAX_BOX,
 } from './srs';
+
+interface SessionStats {
+  answered: number;   // questions answered this session
+  correct: number;    // correct answers this session
+  advanced: number;   // times a word moved up a mastery box
+  mastered: number;   // words that reached the top box this session
+}
+
+const EMPTY_SESSION: SessionStats = { answered: 0, correct: 0, advanced: 0, mastered: 0 };
 
 // --- STATIC CONTENT CONFIGURATION ---
 
@@ -464,6 +474,7 @@ const App: React.FC = () => {
   const [isGeneratingRound, setIsGeneratingRound] = useState(false);
   const [lastFeedback, setLastFeedback] = useState<AnswerFeedback>(null);
   const [showGlossary, setShowGlossary] = useState(false);
+  const [sessionStats, setSessionStats] = useState<SessionStats>(EMPTY_SESSION);
   const [bestStreak, setBestStreak] = useState<number>(() => {
     if (typeof window === 'undefined') return 0;
     const raw = window.localStorage.getItem(BEST_STREAK_KEY);
@@ -575,10 +586,20 @@ const App: React.FC = () => {
     addMessage(answer, Sender.USER);
 
     // Update spaced-repetition memory for this word and persist it.
+    const prevBox = getWord(progressRef.current, challenge.phrase).box;
     const updatedProgress = recordResult(progressRef.current, challenge.phrase, isCorrect, currentCheck.roundCount);
+    const newBox = updatedProgress[challenge.phrase].box;
     progressRef.current = updatedProgress;
     setProgress(updatedProgress);
     saveProgress(updatedProgress);
+
+    // Track what was learned this session for the end-of-duel summary.
+    setSessionStats(prev => ({
+        answered: prev.answered + 1,
+        correct: prev.correct + (isCorrect ? 1 : 0),
+        advanced: prev.advanced + (newBox > prevBox ? 1 : 0),
+        mastered: prev.mastered + (prevBox < MAX_BOX && newBox >= MAX_BOX ? 1 : 0),
+    }));
 
     let newIntegrity = currentCheck.integrity;
     let newStreak = currentCheck.streak;
@@ -635,6 +656,7 @@ const App: React.FC = () => {
 
   const handleRestart = () => {
     setLastFeedback(null);
+    setSessionStats(EMPTY_SESSION);
     // Spaced-repetition progress intentionally persists across defeats — the
     // learner keeps the words they've earned.
     setGameState({
@@ -650,6 +672,7 @@ const App: React.FC = () => {
   };
 
   const handleOnboardingComplete = () => {
+      setSessionStats(EMPTY_SESSION);
       setGameState(prev => ({ ...prev, status: 'ACTIVE' }));
       setTimeout(() => {
           addMessage("PROVE YOUR LINEAGE. 10 VICTORIES.", Sender.SYSTEM);
@@ -718,7 +741,14 @@ const App: React.FC = () => {
         />
       )}
 
-      <GameOverOverlay status={gameState.status} onRestart={handleRestart} />
+      <GameOverOverlay
+        status={gameState.status}
+        onRestart={handleRestart}
+        answered={sessionStats.answered}
+        correct={sessionStats.correct}
+        advanced={sessionStats.advanced}
+        mastered={sessionStats.mastered}
+      />
     </div>
   );
 };
