@@ -450,6 +450,10 @@ const GUARD_QUOTES = {
 };
 
 const BEST_STREAK_KEY = 'quest_mgl_best_streak';
+const ONBOARDED_KEY = 'quest_mgl_onboarded';
+
+const hasOnboarded = (): boolean =>
+  typeof window !== 'undefined' && window.localStorage.getItem(ONBOARDED_KEY) === '1';
 
 const INITIAL_STATE: GameState = {
   integrity: 100,
@@ -470,7 +474,12 @@ const INITIAL_STATE: GameState = {
 };
 
 const App: React.FC = () => {
-  const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
+  // Returning learners skip the intro and drop straight into a drill — important
+  // for a spaced-repetition app designed to be revisited daily.
+  const [gameState, setGameState] = useState<GameState>(() => ({
+    ...INITIAL_STATE,
+    status: hasOnboarded() ? 'ACTIVE' : 'ONBOARDING',
+  }));
   const [isGeneratingRound, setIsGeneratingRound] = useState(false);
   const [lastFeedback, setLastFeedback] = useState<AnswerFeedback>(null);
   const [showGlossary, setShowGlossary] = useState(false);
@@ -672,6 +681,7 @@ const App: React.FC = () => {
   };
 
   const handleOnboardingComplete = () => {
+      try { window.localStorage.setItem(ONBOARDED_KEY, '1'); } catch {}
       setSessionStats(EMPTY_SESSION);
       setGameState(prev => ({ ...prev, status: 'ACTIVE' }));
       setTimeout(() => {
@@ -679,6 +689,17 @@ const App: React.FC = () => {
           startNewRound();
       }, 500);
   };
+
+  // Auto-start the first round for returning learners (onboarding was skipped).
+  const didInit = useRef(false);
+  useEffect(() => {
+      if (didInit.current) return;
+      didInit.current = true;
+      if (stateRef.current.status === 'ACTIVE' && !stateRef.current.currentChallenge) {
+          addMessage("WELCOME BACK. THE GUARD REMEMBERS YOU.", Sender.SYSTEM);
+          startNewRound();
+      }
+  }, [startNewRound]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
